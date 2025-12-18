@@ -25,7 +25,9 @@ export default function DashboardPage() {
   useEffect(() => {
     const savedPeople = JSON.parse(localStorage.getItem("people")) || [];
     setPeople(savedPeople);
-    if (savedPeople.length > 0) selectPerson(savedPeople[0]);
+    if (savedPeople.length > 0) {
+      selectPerson(savedPeople[0]);
+    }
   }, []);
 
   const selectPerson = (p) => {
@@ -50,10 +52,12 @@ export default function DashboardPage() {
 
   const saveTasks = (list) => {
     setTasks(list);
-    localStorage.setItem(
-      "tasks_" + selectedPerson.id,
-      JSON.stringify(list)
-    );
+    if (selectedPerson) {
+      localStorage.setItem(
+        "tasks_" + selectedPerson.id,
+        JSON.stringify(list)
+      );
+    }
   };
 
   const isExpired = (t) =>
@@ -62,8 +66,10 @@ export default function DashboardPage() {
   const addPerson = () => {
     if (!name.trim() || !checkAdmin()) return;
     const newPerson = { id: Date.now(), name };
-    savePeople([...people, newPerson]);
+    const updated = [...people, newPerson];
+    savePeople(updated);
     setName("");
+    selectPerson(newPerson);
   };
 
   const editPerson = (p, e) => {
@@ -81,7 +87,10 @@ export default function DashboardPage() {
     if (!checkAdmin()) return;
     savePeople(people.filter((x) => x.id !== p.id));
     localStorage.removeItem("tasks_" + p.id);
-    if (selectedPerson?.id === p.id) setSelectedPerson(null);
+    if (selectedPerson?.id === p.id) {
+      setSelectedPerson(null);
+      setTasks([]);
+    }
   };
 
   const addTask = () => {
@@ -122,166 +131,162 @@ export default function DashboardPage() {
     { name: "Pending", value: pending },
   ];
 
-  if (!selectedPerson)
-    return <p className="p-6 text-center">Add student first</p>;
-
   return (
     <div className="min-h-screen bg-gray-100 p-4 sm:p-6">
       <div className="max-w-7xl mx-auto space-y-6">
-
-        {/* Dashboard Heading */}
         <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">
           Student Task Dashboard
         </h1>
 
-        {/* Add Student & Task */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Card title="Add Student">
-            <div className="flex flex-col sm:flex-row gap-2">
-              <input
-                className="border p-2 rounded w-full"
-                placeholder="Student name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-              />
-              <button
-                onClick={addPerson}
-                className="bg-blue-600 text-white px-4 rounded"
-              >
-                Add
-              </button>
-            </div>
-          </Card>
+        {/* Add Student */}
+        <Card title="Add Student">
+          <div className="flex gap-2">
+            <input
+              className="border p-2 rounded w-full"
+              placeholder="Student name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+            />
+            <button
+              onClick={addPerson}
+              className="bg-blue-600 text-white px-4 rounded"
+            >
+              Add
+            </button>
+          </div>
+        </Card>
 
-          <Card title={`Add Task • ${selectedPerson.name}`}>
-            <div className="flex flex-col sm:flex-row gap-2">
-              <input
-                className="border p-2 rounded w-full"
-                placeholder="Task name"
-                value={taskName}
-                onChange={(e) => setTaskName(e.target.value)}
-              />
-              <input
-                type="date"
-                className="border p-2 rounded"
-                value={submissionDate}
-                onChange={(e) => setSubmissionDate(e.target.value)}
-              />
-              <button
-                onClick={addTask}
-                className="bg-blue-600 text-white px-4 rounded"
-              >
-                Add
-              </button>
-            </div>
-          </Card>
-        </div>
+        {/* Empty State */}
+        {people.length === 0 && (
+          <p className="text-center text-gray-500">
+            No students yet. Add a student to start.
+          </p>
+        )}
 
-        {/* Stats */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          <StatBox title="Total Tasks" value={tasks.length} />
-          <StatBox title="Completed" value={completed} color="text-green-600" />
-          <StatBox title="Pending" value={pending} color="text-red-600" />
-          <StatBox title="Late" value={late} color="text-yellow-600" />
-        </div>
-
-        {/* Main Area */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* Students */}
-          <Card title="Students">
-            <div className="space-y-2 max-h-72 overflow-auto">
-              {people.map((p) => (
-                <div
-                  key={p.id}
-                  onClick={() => selectPerson(p)}
-                  className={`border rounded p-2 flex justify-between items-center cursor-pointer ${
-                    selectedPerson.id === p.id ? "bg-blue-50" : ""
-                  }`}
+        {selectedPerson && (
+          <>
+            {/* Add Task */}
+            <Card title={`Add Task • ${selectedPerson.name}`}>
+              <div className="flex gap-2">
+                <input
+                  className="border p-2 rounded w-full"
+                  placeholder="Task name"
+                  value={taskName}
+                  onChange={(e) => setTaskName(e.target.value)}
+                />
+                <input
+                  type="date"
+                  className="border p-2 rounded"
+                  value={submissionDate}
+                  onChange={(e) => setSubmissionDate(e.target.value)}
+                />
+                <button
+                  onClick={addTask}
+                  className="bg-blue-600 text-white px-4 rounded"
                 >
-                  <span className="font-medium">{p.name}</span>
-                  <div className="flex gap-2">
-                    <FiEdit color="blue" onClick={(e) => editPerson(p, e)} />
-                    <FiTrash2 color="red" onClick={(e) => deletePerson(p, e)} />
-                  </div>
-                </div>
-              ))}
+                  Add
+                </button>
+              </div>
+            </Card>
+
+            {/* Stats */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <StatBox title="Total Tasks" value={tasks.length} />
+              <StatBox title="Completed" value={completed} color="text-green-600" />
+              <StatBox title="Pending" value={pending} color="text-red-600" />
+              <StatBox title="Late" value={late} color="text-yellow-600" />
             </div>
-          </Card>
 
-          {/* Graph */}
-         <Card title="Progress">
-  <ResponsiveContainer width="100%" height={260}>
-    <BarChart data={barData}>
-      <XAxis dataKey="name" />
-      <YAxis allowDecimals={false} />
-      <Tooltip />
-
-      <Bar dataKey="value">
-        {barData.map((entry, index) => (
-          <Cell
-            key={index}
-            fill={
-              entry.name === "Completed"
-                ? "#16a34a"   // green
-                : entry.name === "Pending"
-                ? "#dc2626"   // red
-                : "#facc15"   // yellow (Late)
-            }
-          />
-        ))}
-      </Bar>
-
-    </BarChart>
-  </ResponsiveContainer>
-</Card>
-
-          {/* Tasks */}
-          <Card title="Tasks">
-            <div className="space-y-3 max-h-72 overflow-auto">
-              {tasks.map((t) => (
-                <div key={t.id} className="border p-3 rounded">
-                  <p className="font-medium">{t.name}</p>
-                  <p className="text-sm">Due: {t.submissionDate}</p>
-
-                  <div className="flex gap-2 mt-2 flex-wrap">
-                    {!t.completed && !isExpired(t) && (
-                      <button
-                        onClick={() =>
-                          updateTask(t.id, {
-                            completed: true,
-                            late: false,
-                          })
-                        }
-                        className="bg-green-600 text-white px-3 py-1 rounded text-sm"
-                      >
-                        Mark Completed
-                      </button>
-                    )}
-                    {!t.completed && isExpired(t) && (
-                      <button
-                        onClick={() =>
-                          updateTask(t.id, {
-                            completed: true,
-                            late: true,
-                          })
-                        }
-                        className="bg-yellow-500 text-white px-3 py-1 rounded text-sm"
-                      >
-                        Submit Late
-                      </button>
-                    )}
-                    <button
-                      onClick={() => deleteTask(t.id)}
-                      className="text-red-600 ml-auto"
+            {/* Main */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {/* Students */}
+              <Card title="Students">
+                <div className="space-y-2 max-h-72 overflow-auto">
+                  {people.map((p) => (
+                    <div
+                      key={p.id}
+                      onClick={() => selectPerson(p)}
+                      className={`border rounded p-2 flex justify-between items-center cursor-pointer ${
+                        selectedPerson.id === p.id ? "bg-blue-50" : ""
+                      }`}
                     >
-                      <FiTrash2 />
-                    </button>
-                  </div>
+                      <span>{p.name}</span>
+                      <div className="flex gap-2">
+                        <FiEdit color="blue" onClick={(e) => editPerson(p, e)} />
+                        <FiTrash2 color="red" onClick={(e) => deletePerson(p, e)} />
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              ))}
+              </Card>
+
+              {/* Graph */}
+              <Card title="Progress">
+                <ResponsiveContainer width="100%" height={260}>
+                  <BarChart data={barData}>
+                    <XAxis dataKey="name" />
+                    <YAxis allowDecimals={false} />
+                    <Tooltip />
+                    <Bar dataKey="value">
+                      {barData.map((entry, index) => (
+                        <Cell
+                          key={index}
+                          fill={
+                            entry.name === "Completed"
+                              ? "#16a34a"
+                              : entry.name === "Pending"
+                              ? "#dc2626"
+                              : "#facc15"
+                          }
+                        />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </Card>
+
+              {/* Tasks */}
+              <Card title="Tasks">
+                <div className="space-y-3 max-h-72 overflow-auto">
+                  {tasks.map((t) => (
+                    <div key={t.id} className="border p-3 rounded">
+                      <p className="font-medium">{t.name}</p>
+                      <p className="text-sm">Due: {t.submissionDate}</p>
+                      <div className="flex gap-2 mt-2">
+                        {!t.completed && !isExpired(t) && (
+                          <button
+                            onClick={() =>
+                              updateTask(t.id, { completed: true, late: false })
+                            }
+                            className="bg-green-600 text-white px-3 py-1 rounded text-sm"
+                          >
+                            Mark Completed
+                          </button>
+                        )}
+                        {!t.completed && isExpired(t) && (
+                          <button
+                            onClick={() =>
+                              updateTask(t.id, { completed: true, late: true })
+                            }
+                            className="bg-yellow-500 text-white px-3 py-1 rounded text-sm"
+                          >
+                            Submit Late
+                          </button>
+                        )}
+                        <button
+                          onClick={() => deleteTask(t.id)}
+                          className="ml-auto text-red-600"
+                        >
+                          <FiTrash2 />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </Card>
             </div>
-          </Card>
-        </div>
+          </>
+        )}
       </div>
     </div>
   );

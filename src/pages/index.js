@@ -8,6 +8,8 @@ import {
   Tooltip,
   ResponsiveContainer,
   Cell,
+  PieChart,
+  Pie,
   CartesianGrid,
 } from "recharts";
 import { FiEdit, FiTrash2 } from "react-icons/fi";
@@ -21,14 +23,13 @@ export default function DashboardPage() {
 
   const [tasks, setTasks] = useState([]);
   const [taskName, setTaskName] = useState("");
+  const [taskDesc, setTaskDesc] = useState("");
   const [submissionDate, setSubmissionDate] = useState("");
 
   useEffect(() => {
     const savedPeople = JSON.parse(localStorage.getItem("people")) || [];
     setPeople(savedPeople);
-    if (savedPeople.length > 0) {
-      selectPerson(savedPeople[0]);
-    }
+    if (savedPeople.length > 0) selectPerson(savedPeople[0]);
   }, []);
 
   const selectPerson = (p) => {
@@ -63,31 +64,9 @@ export default function DashboardPage() {
   const addPerson = () => {
     if (!name.trim() || !checkAdmin()) return;
     const newPerson = { id: Date.now(), name };
-    const updated = [...people, newPerson];
-    savePeople(updated);
+    savePeople([...people, newPerson]);
     setName("");
     selectPerson(newPerson);
-  };
-
-  const editPerson = (p, e) => {
-    e.stopPropagation();
-    if (!checkAdmin()) return;
-    const newName = prompt("New name", p.name);
-    if (!newName) return;
-    savePeople(
-      people.map((x) => (x.id === p.id ? { ...x, name: newName } : x))
-    );
-  };
-
-  const deletePerson = (p, e) => {
-    e.stopPropagation();
-    if (!checkAdmin()) return;
-    savePeople(people.filter((x) => x.id !== p.id));
-    localStorage.removeItem("tasks_" + p.id);
-    if (selectedPerson?.id === p.id) {
-      setSelectedPerson(null);
-      setTasks([]);
-    }
   };
 
   const addTask = () => {
@@ -97,12 +76,15 @@ export default function DashboardPage() {
       {
         id: Date.now(),
         name: taskName,
+        description: taskDesc,
         submissionDate,
         completed: false,
         late: false,
+        showMore: false,
       },
     ]);
     setTaskName("");
+    setTaskDesc("");
     setSubmissionDate("");
   };
 
@@ -125,6 +107,9 @@ export default function DashboardPage() {
     { name: "Late", value: late },
     { name: "Pending", value: pending },
   ];
+
+  const progressPercent =
+    tasks.length === 0 ? 0 : Math.round((completed / tasks.length) * 100);
 
   return (
     <div className="min-h-screen bg-gray-100 p-4 sm:p-6">
@@ -151,38 +136,61 @@ export default function DashboardPage() {
           </div>
         </Card>
 
-        {/* Empty State */}
-        {people.length === 0 && (
-          <p className="text-center text-gray-500">
-            No students yet. Add a student to start.
-          </p>
-        )}
-
         {selectedPerson && (
           <>
-            {/* Add Task */}
-            <Card title={`Add Task • ${selectedPerson.name}`}>
-              <div className="flex gap-2">
-                <input
-                  className="border p-2 rounded w-full"
-                  placeholder="Task name"
-                  value={taskName}
-                  onChange={(e) => setTaskName(e.target.value)}
-                />
-                <input
-                  type="date"
-                  className="border p-2 rounded"
-                  value={submissionDate}
-                  onChange={(e) => setSubmissionDate(e.target.value)}
-                />
-                <button
-                  onClick={addTask}
-                  className="bg-blue-600 text-white px-4 rounded"
-                >
-                  Add
-                </button>
-              </div>
-            </Card>
+            {/* Add Task + Pie */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <Card title={`Add Task • ${selectedPerson.name}`}>
+                <div className="space-y-2">
+                  <input
+                    className="border p-2 rounded w-full"
+                    placeholder="Task name"
+                    value={taskName}
+                    onChange={(e) => setTaskName(e.target.value)}
+                  />
+                  <textarea
+                    className="border p-2 rounded w-full"
+                    placeholder="Description (optional)"
+                    value={taskDesc}
+                    onChange={(e) => setTaskDesc(e.target.value)}
+                  />
+                  <input
+                    type="date"
+                    className="border p-2 rounded w-full"
+                    value={submissionDate}
+                    onChange={(e) => setSubmissionDate(e.target.value)}
+                  />
+                  <button
+                    onClick={addTask}
+                    className="bg-blue-600 text-white px-4 py-2 rounded w-full"
+                  >
+                    Add Task
+                  </button>
+                </div>
+              </Card>
+
+              <Card title="Student Progress">
+                <div className="flex flex-col items-center">
+                  <PieChart width={200} height={200}>
+                    <Pie
+                      data={barData}
+                      dataKey="value"
+                      cx="50%"
+                      cy="50%"
+                      outerRadius={70}
+                    >
+                      <Cell fill="#16a34a" />
+                      <Cell fill="#facc15" />
+                      <Cell fill="#dc2626" />
+                    </Pie>
+                  </PieChart>
+                  <p className="text-sm text-gray-500">Completion</p>
+                  <p className="text-2xl font-bold text-blue-600">
+                    {progressPercent}%
+                  </p>
+                </div>
+              </Card>
+            </div>
 
             {/* Stats */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
@@ -212,72 +220,131 @@ export default function DashboardPage() {
                       }`}
                     >
                       <span>{p.name}</span>
-                      <div className="flex gap-2">
-                        <FiEdit
-                          color="blue"
-                          onClick={(e) => editPerson(p, e)}
-                        />
-                        <FiTrash2
-                          color="red"
-                          onClick={(e) => deletePerson(p, e)}
-                        />
-                      </div>
+                      <FiTrash2
+                        className="text-red-600"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          deletePerson(p);
+                        }}
+                      />
                     </div>
                   ))}
                 </div>
               </Card>
 
-            {/* Graph */}
+              {/* Bar Graph */}
               <Card title="Progress">
-                <ResponsiveContainer width="100%" height={260}>
-                  <BarChart data={barData}>
-                    <XAxis dataKey="name" />
-                    <YAxis allowDecimals={false} />
-                    <Tooltip />
-                    <Bar dataKey="value">
-                      {barData.map((entry, index) => (
-                        <Cell
-                          key={index}
-                          fill={
-                            entry.name === "Completed"
-                              ? "#16a34a"
-                              : entry.name === "Pending"
-                              ? "#dc2626"
-                              : "#facc15"
-                          }
-                        />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
+                <ResponsiveContainer width="100%" height={280}>
+  <BarChart data={barData}>
+    <defs>
+      <linearGradient id="completedGradient" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stopColor="#22c55e" />
+        <stop offset="100%" stopColor="#15803d" />
+      </linearGradient>
+      <linearGradient id="pendingGradient" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stopColor="#ef4444" />
+        <stop offset="100%" stopColor="#991b1b" />
+      </linearGradient>
+      <linearGradient id="lateGradient" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stopColor="#fde047" />
+        <stop offset="100%" stopColor="#ca8a04" />
+      </linearGradient>
+    </defs>
+
+    <CartesianGrid strokeDasharray="2 6" vertical={false} stroke="rgba(0,0,0,0.06)" />
+
+    <XAxis
+      dataKey="name"
+      tick={{ fill: "#374151", fontSize: 13, fontWeight: 500 }}
+      axisLine={false}
+      tickLine={false}
+    />
+
+    <YAxis
+      allowDecimals={false}
+      tick={{ fill: "#6b7280", fontSize: 12 }}
+      axisLine={false}
+      tickLine={false}
+    />
+
+    <Tooltip
+      cursor={{ fill: "rgba(59,130,246,0.08)" }}
+      contentStyle={{
+        background: "rgba(255,255,255,0.9)",
+        backdropFilter: "blur(6px)",
+        borderRadius: "12px",
+        border: "1px solid rgba(0,0,0,0.08)",
+        boxShadow: "0 10px 25px rgba(0,0,0,0.15)",
+        fontSize: "13px",
+      }}
+    />
+
+    <Bar
+      dataKey="value"
+      radius={[14, 14, 6, 6]}
+      barSize={46}
+      animationDuration={900}
+    >
+      {barData.map((entry, index) => (
+        <Cell
+          key={index}
+          fill={
+            entry.name === "Completed"
+              ? "url(#completedGradient)"
+              : entry.name === "Pending"
+              ? "url(#pendingGradient)"
+              : "url(#lateGradient)"
+          }
+        />
+      ))}
+    </Bar>
+  </BarChart>
+</ResponsiveContainer>
+
               </Card>
 
               {/* Tasks */}
-              <Card title={` Task • ${selectedPerson.name}`}>
+              <Card title={`Task • ${selectedPerson.name}`}>
                 <div className="space-y-3 max-h-72 overflow-auto">
                   {tasks.map((t) => (
                     <div key={t.id} className="border p-3 rounded">
                       <p className="font-medium">{t.name}</p>
                       <p className="text-sm">Due: {t.submissionDate}</p>
-                      <div className="flex gap-2 mt-2">
-                        {!t.completed && !isExpired(t) && (
+
+                      {t.description && (
+                        <>
+                          <p className="text-sm text-gray-600">
+                            {t.showMore
+                              ? t.description
+                              : t.description.slice(0, 35)}
+                          </p>
+                          {t.description.length > 35 && (
+                            <button
+                              className="text-blue-600 text-xs"
+                              onClick={() =>
+                                updateTask(t.id, {
+                                  showMore: !t.showMore,
+                                })
+                              }
+                            >
+                              {t.showMore ? "Less" : "More"}
+                            </button>
+                          )}
+                        </>
+                      )}
+
+                      <div className="flex mt-2">
+                        {!t.completed && (
                           <button
                             onClick={() =>
-                              updateTask(t.id, { completed: true, late: false })
+                              updateTask(t.id, {
+                                completed: true,
+                                late: isExpired(t),
+                              })
                             }
                             className="bg-green-600 text-white px-3 py-1 rounded text-sm"
                           >
-                            Mark Completed
-                          </button>
-                        )}
-                        {!t.completed && isExpired(t) && (
-                          <button
-                            onClick={() =>
-                              updateTask(t.id, { completed: true, late: true })
-                            }
-                            className="bg-yellow-500 text-white px-3 py-1 rounded text-sm"
-                          >
-                            Submit Late
+                            Mark Done
                           </button>
                         )}
                         <button

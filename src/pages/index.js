@@ -256,7 +256,7 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen bg-gray-100 p-4 sm:p-6">
       <div className="max-w-7xl mx-auto space-y-6">
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">
+        <h1 className="text-2xl sm:text-3xl font-bold text-center text-gray-800">
           Employee Task Dashboard
         </h1>
 
